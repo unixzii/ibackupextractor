@@ -113,7 +113,7 @@ impl<'p, 'd> Context<'p, 'd> {
 
     fn original_file_path(&self, file_id: &str) -> PathBuf {
         let bucket = &file_id[0..2];
-        self.backup_dir.join("Files").join(bucket).join(file_id)
+        self.backup_dir.join(bucket).join(file_id)
     }
 }
 
