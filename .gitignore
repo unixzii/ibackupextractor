@@ -3,3 +3,6 @@
 
 # Visual Studio Code
 /.vscode/launch.json
+
+# macOS files
+.DS_Store
