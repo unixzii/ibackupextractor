@@ -89,9 +89,30 @@ impl BackupManifest {
                     relative_path,
                     file_type: TryFrom::try_from(flags)
                         .map_err(|_| anyhow!("unknown file type: {flags}"))?,
+                    file_buf,
                 })
             })
             .collect()
+    }
+
+    pub fn delete_domain(&self, domain: &str) -> Result<()> {
+        let mut stmt = self.db_conn.prepare("DELETE FROM files WHERE domain = ?")?;
+        stmt.execute([domain])?;
+        Ok(())
+    }
+
+    pub fn insert_file(&self, domain: &str, file: &ManifestFile) -> Result<()> {
+        let mut stmt = self.db_conn.prepare(
+            "INSERT INTO files (fileID, domain, relativePath, flags, file) VALUES (?, ?, ?, ?, ?)",
+        )?;
+        stmt.execute((
+            &file.file_id,
+            domain,
+            &file.relative_path,
+            u64::from(file.file_type),
+            &file.file_buf,
+        ))?;
+        Ok(())
     }
 }
 
@@ -101,6 +122,7 @@ pub struct ManifestFile {
     pub file_id: String,
     pub relative_path: String,
     pub file_type: ManifestFileType,
+    pub file_buf: Vec<u8>,
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
@@ -120,5 +142,15 @@ impl TryFrom<u64> for ManifestFileType {
             4 => Self::SymbolicLink,
             _ => return Err("unknown type"),
         })
+    }
+}
+
+impl From<ManifestFileType> for u64 {
+    fn from(value: ManifestFileType) -> Self {
+        match value {
+            ManifestFileType::File => 1,
+            ManifestFileType::Directory => 2,
+            ManifestFileType::SymbolicLink => 4,
+        }
     }
 }

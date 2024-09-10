@@ -13,7 +13,12 @@ pub struct Args {
     pub domain: Option<String>,
 
     /// Path of the destination directory for extracted files.
-    #[arg(short, required = true, conflicts_with = "list_domains")]
+    #[arg(
+        short,
+        required = true,
+        conflicts_with = "list_domains",
+        conflicts_with = "migrate_to"
+    )]
     pub out_dir: Option<PathBuf>,
 
     /// List all the domains.
@@ -21,8 +26,12 @@ pub struct Args {
     pub list_domains: bool,
 
     /// Copy the files instead of creating symbolic links.
-    #[arg(short, conflicts_with = "list_domains")]
+    #[arg(short, conflicts_with = "list_domains", conflicts_with = "migrate_to")]
     pub copy: bool,
+
+    /// Migrate the files to another backup archive.
+    #[arg(short, conflicts_with = "list_domains")]
+    pub migrate_to: Option<PathBuf>,
 }
 
 pub fn parse_args() -> Args {

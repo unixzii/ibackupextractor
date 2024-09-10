@@ -78,6 +78,11 @@ mod progress_bar {
                 progress_bar.set_length(total as u64);
                 progress_bar.set_position(extracted as u64);
             }
+            ProgressEvent::Migrating { migrated, total } => {
+                progress_bar.set_message(format!("Migrating files... ({migrated}/{total})"));
+                progress_bar.set_length(total as u64);
+                progress_bar.set_position(migrated as u64);
+            }
         }
     }
 
@@ -112,6 +117,30 @@ pub fn run(args: Args) -> Result<()> {
         for domain in domains {
             println!("{domain}");
         }
+    } else if let Some(migration_dest_dir) = args.migrate_to {
+        let timer = utils::PerfTimer::new();
+        let pb_port = progress_bar::make();
+
+        let manifest_path = migration_dest_dir.join("Manifest.db");
+        let mut manifest =
+            BackupManifest::open(manifest_path).context("failed to open the manifest database")?;
+
+        let dest_context = AppContext::new(&migration_dest_dir, &mut manifest, true);
+        dest_context
+            .migrate(
+                args.domain.as_ref().expect("domain should not be empty"),
+                &context,
+                |event| {
+                    pb_port.send(event);
+                },
+            )
+            .context("failed to migrate files")?;
+
+        // Dispose the progress bar first to prevent it from being
+        // clobbered by the timer message.
+        drop(pb_port);
+
+        timer.finish();
     } else {
         let timer = utils::PerfTimer::new();
         let pb_port = progress_bar::make();
@@ -128,8 +157,6 @@ pub fn run(args: Args) -> Result<()> {
             )
             .context("failed to extract files")?;
 
-        // Dispose the progress bar first to prevent it from being
-        // clobbered by the timer message.
         drop(pb_port);
 
         timer.finish();

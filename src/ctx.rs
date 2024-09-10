@@ -94,6 +94,72 @@ impl<'p, 'd> Context<'p, 'd> {
 
         Ok(())
     }
+
+    pub fn migrate<'sp, 'sd, F>(
+        &self,
+        domain: &str,
+        from: &Context<'sp, 'sd>,
+        progress_cb: F,
+    ) -> Result<()>
+    where
+        F: FnMut(ProgressEvent),
+    {
+        let mut progress_cb = progress_cb;
+
+        self.manifest
+            .delete_domain(domain)
+            .context("failed to perform cleanup on target archive")?;
+
+        progress_cb(ProgressEvent::Querying);
+        let files = from
+            .manifest
+            .query_files(domain)
+            .context("failed to query files from database")?;
+
+        let total_file_count = files.len();
+        let mut migrated_file_count = 0;
+        for file in files {
+            let file_id = &file.file_id;
+            let dest_bucket_dir = self.backup_dir.join(&file_id[0..2]);
+            let dest_file_path = dest_bucket_dir.join(file_id);
+            if !dest_bucket_dir.exists() {
+                fs::create_dir_all(&dest_bucket_dir).with_context(|| {
+                    format!(
+                        "failed to create directory: {}",
+                        dest_bucket_dir.to_string_lossy()
+                    )
+                })?;
+            }
+
+            // FIXME: maybe we need to prompt the user before deleting.
+            if dest_file_path.exists() {
+                fs::remove_file(&dest_file_path).with_context(|| {
+                    format!(
+                        "failed to remove old file: {}",
+                        dest_file_path.to_string_lossy()
+                    )
+                })?;
+            }
+            from.write_file(&dest_file_path, file_id).with_context(|| {
+                format!(
+                    "failed to create file: {}",
+                    dest_file_path.to_string_lossy()
+                )
+            })?;
+
+            self.manifest
+                .insert_file(domain, &file)
+                .context("failed to update manifest")?;
+
+            migrated_file_count += 1;
+            progress_cb(ProgressEvent::Migrating {
+                migrated: migrated_file_count,
+                total: total_file_count,
+            });
+        }
+
+        Ok(())
+    }
 }
 
 impl<'p, 'd> Context<'p, 'd> {
@@ -122,4 +188,5 @@ pub enum ProgressEvent {
     Querying,
     Indexing { indexed: usize, total: usize },
     Extracting { extracted: usize, total: usize },
+    Migrating { migrated: usize, total: usize },
 }
