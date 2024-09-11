@@ -4,11 +4,13 @@
 extern crate anyhow;
 
 mod app;
+mod backup;
 mod cli;
-mod ctx;
 mod db;
 mod fs_index;
 mod utils;
+
+use backup::Backup;
 
 fn main() {
     let args = cli::parse_args();

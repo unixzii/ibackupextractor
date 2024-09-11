@@ -3,9 +3,9 @@ use std::path::Path;
 use anyhow::{Context, Result};
 
 use crate::cli::Args;
-use crate::ctx::Context as AppContext;
 use crate::db::BackupManifest;
 use crate::utils;
+use crate::Backup;
 
 mod progress_bar {
     use std::sync::mpsc::{channel, Receiver, Sender};
@@ -14,7 +14,7 @@ mod progress_bar {
 
     use indicatif::{ProgressBar, ProgressStyle};
 
-    use crate::ctx::ProgressEvent;
+    use crate::backup::ProgressEvent;
 
     pub struct ControlPort {
         tx: Sender<Option<ProgressEvent>>,
@@ -105,13 +105,16 @@ pub fn run(args: Args) -> Result<()> {
     let backup_dir = args.backup_dir;
 
     let manifest_path = backup_dir.join("Manifest.db");
-    let mut manifest =
+    let manifest =
         BackupManifest::open(manifest_path).context("failed to open the manifest database")?;
 
-    let context = AppContext::new(&backup_dir, &mut manifest, args.copy);
+    let src_backup = Backup::new(backup_dir, manifest, args.copy);
+
     if args.list_domains {
         let timer = utils::PerfTimer::new();
-        let domains = context.list_domains().context("failed to list domains")?;
+        let domains = src_backup
+            .list_domains()
+            .context("failed to list domains")?;
         timer.finish();
 
         for domain in domains {
@@ -122,14 +125,14 @@ pub fn run(args: Args) -> Result<()> {
         let pb_port = progress_bar::make();
 
         let manifest_path = migration_dest_dir.join("Manifest.db");
-        let mut manifest =
+        let manifest =
             BackupManifest::open(manifest_path).context("failed to open the manifest database")?;
 
-        let dest_context = AppContext::new(&migration_dest_dir, &mut manifest, true);
-        dest_context
+        let dest_backup = Backup::new(migration_dest_dir, manifest, true);
+        dest_backup
             .migrate(
                 args.domain.as_ref().expect("domain should not be empty"),
-                &context,
+                &src_backup,
                 |event| {
                     pb_port.send(event);
                 },
@@ -144,7 +147,7 @@ pub fn run(args: Args) -> Result<()> {
     } else {
         let timer = utils::PerfTimer::new();
         let pb_port = progress_bar::make();
-        context
+        src_backup
             .extract_file(
                 args.domain.as_ref().expect("domain should not be empty"),
                 args.out_dir

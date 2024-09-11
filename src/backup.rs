@@ -1,22 +1,22 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use anyhow::{Context as AnyhowContext, Result};
+use anyhow::{Context, Result};
 
 use crate::db::{BackupManifest, ManifestFileType};
 use crate::fs_index::FileSystemIndex;
 use crate::utils::string_pool::StringPool;
 
-pub struct Context<'p, 'd> {
-    backup_dir: &'p Path,
-    manifest: &'d mut BackupManifest,
+pub struct Backup {
+    backup_dir: PathBuf,
+    manifest: BackupManifest,
     copy_mode: bool,
 }
 
-impl<'p, 'd> Context<'p, 'd> {
-    pub fn new(backup_dir: &'p Path, manifest: &'d mut BackupManifest, copy_mode: bool) -> Self {
+impl Backup {
+    pub fn new<P: Into<PathBuf>>(backup_dir: P, manifest: BackupManifest, copy_mode: bool) -> Self {
         Self {
-            backup_dir,
+            backup_dir: backup_dir.into(),
             manifest,
             copy_mode,
         }
@@ -76,12 +76,13 @@ impl<'p, 'd> Context<'p, 'd> {
                 ));
             }
 
-            self.write_file(&dest_file_path, file_id).with_context(|| {
-                format!(
-                    "failed to create file: {}",
-                    dest_file_path.to_string_lossy()
-                )
-            })?;
+            self.write_file(&dest_file_path, file_id, self.copy_mode)
+                .with_context(|| {
+                    format!(
+                        "failed to create file: {}",
+                        dest_file_path.to_string_lossy()
+                    )
+                })?;
 
             extracted_file_count += 1;
             progress_cb(ProgressEvent::Extracting {
@@ -95,12 +96,7 @@ impl<'p, 'd> Context<'p, 'd> {
         Ok(())
     }
 
-    pub fn migrate<'sp, 'sd, F>(
-        &self,
-        domain: &str,
-        from: &Context<'sp, 'sd>,
-        progress_cb: F,
-    ) -> Result<()>
+    pub fn migrate<F>(&self, domain: &str, from: &Backup, progress_cb: F) -> Result<()>
     where
         F: FnMut(ProgressEvent),
     {
@@ -119,15 +115,19 @@ impl<'p, 'd> Context<'p, 'd> {
         let total_file_count = files.len();
         let mut migrated_file_count = 0;
         for file in files {
+            if file.file_type != ManifestFileType::File {
+                self.manifest
+                    .insert_file(domain, &file)
+                    .context("failed to update manifest")?;
+                continue;
+            }
+
             let file_id = &file.file_id;
-            let dest_bucket_dir = self.backup_dir.join(&file_id[0..2]);
-            let dest_file_path = dest_bucket_dir.join(file_id);
-            if !dest_bucket_dir.exists() {
-                fs::create_dir_all(&dest_bucket_dir).with_context(|| {
-                    format!(
-                        "failed to create directory: {}",
-                        dest_bucket_dir.to_string_lossy()
-                    )
+            let dest_file_path = self.original_file_path(file_id);
+            let dir = dest_file_path.parent().expect("path should have a parent");
+            if !dir.exists() {
+                fs::create_dir_all(&dir).with_context(|| {
+                    format!("failed to create directory: {}", dir.to_string_lossy())
                 })?;
             }
 
@@ -140,12 +140,13 @@ impl<'p, 'd> Context<'p, 'd> {
                     )
                 })?;
             }
-            from.write_file(&dest_file_path, file_id).with_context(|| {
-                format!(
-                    "failed to create file: {}",
-                    dest_file_path.to_string_lossy()
-                )
-            })?;
+            from.write_file(&dest_file_path, file_id, true)
+                .with_context(|| {
+                    format!(
+                        "failed to create file: {}",
+                        dest_file_path.to_string_lossy()
+                    )
+                })?;
 
             self.manifest
                 .insert_file(domain, &file)
@@ -162,11 +163,11 @@ impl<'p, 'd> Context<'p, 'd> {
     }
 }
 
-impl<'p, 'd> Context<'p, 'd> {
-    fn write_file(&self, file_path: &Path, file_id: &str) -> Result<()> {
+impl Backup {
+    fn write_file(&self, file_path: &Path, file_id: &str, copy_mode: bool) -> Result<()> {
         let original_file_path = self.original_file_path(file_id);
 
-        if self.copy_mode {
+        if copy_mode {
             fs::copy(original_file_path, file_path)?;
         } else {
             #[cfg(unix)]
