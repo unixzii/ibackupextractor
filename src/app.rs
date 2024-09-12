@@ -1,8 +1,6 @@
-use std::path::Path;
-
 use anyhow::{Context, Result};
 
-use crate::cli::Args;
+use crate::cli::{Args, Command};
 use crate::db::BackupManifest;
 use crate::utils;
 use crate::Backup;
@@ -102,67 +100,74 @@ mod progress_bar {
 }
 
 pub fn run(args: Args) -> Result<()> {
-    let backup_dir = args.backup_dir;
+    let backup_dir = args.backup_dir();
 
     let manifest_path = backup_dir.join("Manifest.db");
     let manifest =
         BackupManifest::open(manifest_path).context("failed to open the manifest database")?;
 
-    let src_backup = Backup::new(backup_dir, manifest, args.copy);
+    let src_backup = Backup::new(backup_dir, manifest, args.copy_mode());
 
-    if args.list_domains {
-        let timer = utils::PerfTimer::new();
-        let domains = src_backup
-            .list_domains()
-            .context("failed to list domains")?;
-        timer.finish();
+    match &args.command {
+        Command::ListDomains { .. } => {
+            let timer = utils::PerfTimer::new();
+            let domains = src_backup
+                .list_domains()
+                .context("failed to list domains")?;
+            timer.finish();
 
-        for domain in domains {
-            println!("{domain}");
+            for domain in domains {
+                println!("{domain}");
+            }
         }
-    } else if let Some(migration_dest_dir) = args.migrate_to {
-        let timer = utils::PerfTimer::new();
-        let pb_port = progress_bar::make();
+        Command::Migrate {
+            dest_backup_dir,
+            domain,
+            ..
+        } => {
+            let timer = utils::PerfTimer::new();
+            let pb_port = progress_bar::make();
 
-        let manifest_path = migration_dest_dir.join("Manifest.db");
-        let manifest =
-            BackupManifest::open(manifest_path).context("failed to open the manifest database")?;
+            let manifest_path = dest_backup_dir.join("Manifest.db");
+            let manifest = BackupManifest::open(manifest_path)
+                .context("failed to open the manifest database")?;
 
-        let dest_backup = Backup::new(migration_dest_dir, manifest, true);
-        dest_backup
-            .migrate(
-                args.domain.as_ref().expect("domain should not be empty"),
-                &src_backup,
-                |event| {
-                    pb_port.send(event);
-                },
-            )
-            .context("failed to migrate files")?;
+            let dest_backup = Backup::new(dest_backup_dir, manifest, args.copy_mode());
+            dest_backup
+                .migrate(
+                    domain.as_ref().expect("domain should not be empty"),
+                    &src_backup,
+                    |event| {
+                        pb_port.send(event);
+                    },
+                )
+                .context("failed to migrate files")?;
 
-        // Dispose the progress bar first to prevent it from being
-        // clobbered by the timer message.
-        drop(pb_port);
+            // Dispose the progress bar first to prevent it from being
+            // clobbered by the timer message.
+            drop(pb_port);
 
-        timer.finish();
-    } else {
-        let timer = utils::PerfTimer::new();
-        let pb_port = progress_bar::make();
-        src_backup
-            .extract_file(
-                args.domain.as_ref().expect("domain should not be empty"),
-                args.out_dir
-                    .as_ref()
-                    .map(|p| p as &Path)
-                    .expect("out_dir should not be empty"),
-                |event| {
-                    pb_port.send(event);
-                },
-            )
-            .context("failed to extract files")?;
+            timer.finish();
+        }
+        Command::Extract {
+            out_dir, domain, ..
+        } => {
+            let timer = utils::PerfTimer::new();
+            let pb_port = progress_bar::make();
+            src_backup
+                .extract_file(
+                    domain.as_ref().expect("domain should not be empty"),
+                    &out_dir,
+                    |event| {
+                        pb_port.send(event);
+                    },
+                )
+                .context("failed to extract files")?;
 
-        drop(pb_port);
+            drop(pb_port);
 
-        timer.finish();
+            timer.finish();
+        }
     }
 
     Ok(())
