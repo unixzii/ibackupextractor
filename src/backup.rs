@@ -140,7 +140,7 @@ impl Backup {
                     )
                 })?;
             }
-            from.write_file(&dest_file_path, file_id, true)
+            from.write_file(&dest_file_path, file_id, self.copy_mode)
                 .with_context(|| {
                     format!(
                         "failed to create file: {}",
