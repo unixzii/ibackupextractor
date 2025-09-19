@@ -1,8 +1,8 @@
 [package]
 name = "ibackupextractor"
 description = "A simple tool for extracting files from iOS backup archive."
-version = "0.1.0"
-edition = "2021"
+version = "0.1.1"
+edition = "2024"
 
 [profile.release]
 strip = true
@@ -14,9 +14,9 @@ panic = "abort"
 [dependencies]
 anyhow = "1"
 readonly = "0.2"
-fallible-iterator = "0.2"
-rusqlite = "0.29"
+fallible-iterator = "0.3"
+rusqlite = "0.37"
 plist = "1"
-console = "0.15"
-indicatif = "0.17"
+console = "0.16"
+indicatif = "0.18"
 clap = { version = "4", features = ["derive"] }
