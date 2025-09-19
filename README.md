@@ -50,6 +50,20 @@ The extraction process can take minutes to finish, depends on the number of file
 
 In addition to the default symbolic-link mode, you can also change to copy mode by specifying `-c` flag. In copy mode, all files are copied to the destination path, and then you can delete the original backup archive freely if you want.
 
+### Migrate a Domain Between Backups
+
+The `migrate` subcommand lets you copy files in a domain from one backup archive to another while preserving the original directory structure:
+
+```
+ibackupextractor migrate -d SomeDomain /path/to/source_backup_archive /path/to/dest_backup_archive
+```
+
+As with extraction, you can switch to copy mode with `-c` so that real files are created in the destination backup archive:
+
+```
+ibackupextractor migrate -c -d SomeDomain /path/to/source_backup_archive /path/to/dest_backup_archive
+```
+
 ## FAQ
 
 ### How to create a proper backup archive?
