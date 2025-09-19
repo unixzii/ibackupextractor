@@ -19,7 +19,7 @@ impl StringPool {
         Self::default()
     }
 
-    pub fn intern(&self, s: &str) -> StringId {
+    pub fn intern(&self, s: &str) -> StringId<'_> {
         let mut inner_mut = self.inner.borrow_mut();
         if let Some(idx) = inner_mut.idx_map.get(s).cloned() {
             return StringId { pool: self, idx };
