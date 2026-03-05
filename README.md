@@ -14,16 +14,10 @@ For Mac users, you can download the pre-built binaries directly from [releases](
 
 ### Build Locally
 
-To build this locally, a nightly toolchain is required. You can install it using `rustup`:
+To build the project locally, use Cargo:
 
 ```
-rustup toolchain install nightly
-```
-
-Then, you can build the executable:
-
-```
-cargo +nightly build --release
+cargo build --release
 ```
 
 ## Usage
