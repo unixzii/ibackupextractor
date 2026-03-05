@@ -24,6 +24,8 @@ cargo build --release
 
 Locate the backup archive you want to extract. Generally, you can find it under `/Users/cyandev/Library/Application Support/MobileSync/Backup`. **The archive is a directory that contains `Manifest.db` file.**
 
+The tool opens `Manifest.db` in read-only mode, so it can list domains and extract files even when the archive is mounted from read-only media such as external HFS+ disks.
+
 ### List Domains
 
 Backup files are grouped by domains, and you can ask the binary to enumerate them with the `list-domains` subcommand. It only requires the path to the backup archive:
@@ -69,6 +71,10 @@ This tool can only handle the backup archives that are unencrypted. To backup wi
 ### Will this tool modify the original backup archive?
 
 No, the tool will not write to any file in the backup archive.
+
+### Can I run this against archives on read-only storage?
+
+Yes. The manifest database is opened with SQLite read-only flags so the tool never tries to create journal files, which allows it to read backups stored on read-only volumes (for example, Apple backup folders mounted from HFS+ disks).
 
 ## License
 
