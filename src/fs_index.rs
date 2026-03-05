@@ -183,7 +183,6 @@ impl<'p> EntryType<'p> {
 
 #[cfg(test)]
 mod tests {
-    use std::assert_matches::assert_matches;
     use std::collections::HashMap;
 
     use super::FileSystemIndex;
@@ -199,7 +198,7 @@ mod tests {
         let mut assert_add_file = |path: &str, file_id: &str| {
             let res = index.add_file(path, file_id.to_owned());
             added_files.insert(path.to_owned(), file_id.to_owned());
-            assert_matches!(res, Ok(()));
+            assert!(res.is_ok());
         };
 
         assert_add_file("Library/Cookies/a", "a");
@@ -214,7 +213,7 @@ mod tests {
             }
             Ok(())
         });
-        assert_matches!(res, Ok(()));
+        assert!(res.is_ok());
         assert_eq!(added_files.len(), 0);
     }
 }
