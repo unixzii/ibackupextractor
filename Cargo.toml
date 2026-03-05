@@ -1,7 +1,7 @@
 [package]
 name = "ibackupextractor"
 description = "A simple tool for extracting files from iOS backup archive."
-version = "0.1.1"
+version = "0.2.0"
 edition = "2024"
 
 [profile.release]
