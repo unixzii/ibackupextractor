@@ -26,23 +26,23 @@ Locate the backup archive you want to extract. Generally, you can find it under 
 
 ### List Domains
 
-Backup files are grouped by domains, and you need to specify a domain name when extracting. To list all the domains available, run the command below:
+Backup files are grouped by domains, and you can ask the binary to enumerate them with the `list-domains` subcommand. It only requires the path to the backup archive:
 
 ```
-ibackupextractor -l /path/to/your_backup_archive
+ibackupextractor list-domains /path/to/your_backup_archive
 ```
 
 ### Extract a Specified Domain
 
-To extract files, you need to specify a domain name and a destination path (an empty directory is recommended):
+To extract files, invoke the `extract` subcommand with the archive path, the destination directory, and the domain name via `-d`/`--domain`. An empty directory is recommended:
 
 ```
-ibackupextractor -o /path/to/dest_dir /path/to/your_backup_archive SomeDomain
+ibackupextractor extract /path/to/your_backup_archive /path/to/dest_dir -d SomeDomain
 ```
 
-The extraction process can take minutes to finish, depends on the number of files.
+The extraction process can take minutes to finish, depending on the number of files.
 
-In addition to the default symbolic-link mode, you can also change to copy mode by specifying `-c` flag. In copy mode, all files are copied to the destination path, and then you can delete the original backup archive freely if you want.
+In addition to the default symbolic-link mode, you can also change to copy mode by specifying `-c` (or `--copy`). In copy mode, all files are copied to the destination path, and then you can delete the original backup archive freely if you want.
 
 ### Migrate a Domain Between Backups
 
