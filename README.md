@@ -4,13 +4,10 @@ A simple tool for extracting files from iOS backup archive.
 
 iOS backup files are not stored with their original directory
 layouts. Retrieving a particular file from the app sandbox can be
-difficult. This tool can extract all the files from a backup archive,
-and then you can view the sandbox filesystem as it was originally
-stored in your iPhone or iPad.
+difficult. This tool can extract files from a backup archive, and then
+you can view the sandbox filesystem as it was originally stored in
+your iPhone or iPad.
 
-To save disk usage and speed up the extraction process, by default the
-tool creates symbolic links to the original files in the backup
-archive. If desired, files can also be copied.
 
 ## Install
 
@@ -37,9 +34,9 @@ be found in
 **The archive is a directory that contains a `Manifest.db` file.**
 
 Except when performing migrations, `Manifest.db` is opened in
-read-only mode, so it can list domains and extract files even when the
-archive is on a read-only filesystem (e.g. HFS+ on Linux).
-However, never work on the only copy of your data!
+read-only mode, so it will work even when the archive is on a
+read-only filesystem (e.g. HFS+ on Linux).  However, never work on the
+only copy of your data!
 
 ### Show Backup Information
 
@@ -77,14 +74,14 @@ ibackupextractor extract -d SomeDomain /path/to/your_backup_archive /path/to/des
 
 An empty destination directory is recommended.
 
-In addition to the default symbolic-link mode, the `extract`
-subcommand can also create a copy of each extracted file in the
-destination directory, by specifying `-c` (or `--copy`).
+By default, `extract` _copies_ each file to the destination
+directory. To save disk space, use the `-L` (or `--link`) option to
+create symbolic links instead of copies.
 
-For example, to copy Camera Roll files from an archive:
+For example, to copy all Camera Roll files from an archive:
 
 ```
-ibackupextractor extract -c -d CameraRollDomain /path/to/your_backup_archive /path/to/dest_dir
+ibackupextractor extract -d CameraRollDomain /path/to/your_backup_archive /path/to/dest_dir
 ```
 
 ### Migrate a Domain Between Backups
@@ -97,12 +94,9 @@ structure:
 ibackupextractor migrate -d SomeDomain /path/to/source_backup_archive /path/to/dest_backup_archive
 ```
 
-As with extraction, you can switch to copy mode with `-c` so that real
-files are created in the destination backup archive:
-
-```
-ibackupextractor migrate -c -d SomeDomain /path/to/source_backup_archive /path/to/dest_backup_archive
-```
+As with extraction, `migrate` copies files between backups by default.
+Add `-L` if you want symbolic links instead of real files in the destination
+archive.
 
 ## FAQ
 

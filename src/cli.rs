@@ -21,8 +21,8 @@ impl Args {
 
     pub fn copy_mode(&self) -> bool {
         match &self.command {
-            Command::Extract { copy, .. } => *copy,
-            Command::Migrate { copy, .. } => *copy,
+            Command::Extract { link, .. } => !*link,
+            Command::Migrate { link, .. } => !*link,
             _ => false,
         }
     }
@@ -50,9 +50,9 @@ pub enum Command {
         #[arg(short, long, required = true)]
         domain: Option<String>,
 
-        /// Copy the files instead of creating symbolic links.
-        #[arg(short, long)]
-        copy: bool,
+        /// Create symbolic links instead of copying files.
+        #[arg(short = 'L', long)]
+        link: bool,
     },
     Migrate {
         /// Path of the backup archive to migrate from.
@@ -65,9 +65,9 @@ pub enum Command {
         #[arg(short, long, required = true)]
         domain: Option<String>,
 
-        /// Copy the files instead of creating symbolic links.
-        #[arg(short, long)]
-        copy: bool,
+        /// Create symbolic links instead of copying files.
+        #[arg(short = 'L', long)]
+        link: bool,
     },
 }
 
