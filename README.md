@@ -51,15 +51,15 @@ metadata, total files/domains, and the overall size on disk:
 ibackupextractor info /path/to/your_backup_archive
 ```
 
-In general, the `info` shows _archive-level_ metadata, while
+The `info` command is designed to show _archive-level_ metadata, while
 `list-domains` (see below) shows information related to the _domains_
 inside the archive.
 
 ### List Domains
 
-Backup files are grouped by "domains", and the `list-domains`
-subcommand will show all the domains in a particular archive,
-sorted by the size of exportable data in each:
+Backup files are grouped by iOS "domains", and the `list-domains`
+subcommand will show all the domains in a particular archive, sorted
+by the amount of exportable data in each:
 
 ```
 ibackupextractor list-domains /path/to/your_backup_archive
@@ -67,21 +67,25 @@ ibackupextractor list-domains /path/to/your_backup_archive
 
 ### Extract a Specified Domain
 
-To extract files, use the `extract` subcommand with the archive path,
-a desired destination directory, and the domain to extract with
-`-d`/`--domain`: 
+To extract files, use the `extract` subcommand followed by `-d` and
+the name of the domain to extract, then the path to the archive
+directory, and then a destination directory:
+
 ```
-ibackupextractor extract /path/to/your_backup_archive /path/to/dest_dir -d SomeDomain
+ibackupextractor extract -d SomeDomain /path/to/your_backup_archive /path/to/dest_dir
 ```
 
 An empty destination directory is recommended.
 
-The extraction process can take minutes to finish, depending on the
-number of files.
-
 In addition to the default symbolic-link mode, the `extract`
 subcommand can also create a copy of each extracted file in the
 destination directory, by specifying `-c` (or `--copy`).
+
+For example, to copy Camera Roll files from an archive:
+
+```
+ibackupextractor extract -c -d CameraRollDomain /path/to/your_backup_archive /path/to/dest_dir
+```
 
 ### Migrate a Domain Between Backups
 
@@ -104,9 +108,9 @@ ibackupextractor migrate -c -d SomeDomain /path/to/source_backup_archive /path/t
 
 ### How do I create a backup archive that this tool can use?
 
-This tool can only handle the backup archives that are unencrypted. To
-backup without encryption, uncheck the following option before
-starting:
+**This tool can only handle the backup archives that are
+unencrypted.** To backup without encryption, uncheck the following
+option before starting:
 
 ![Disable Encryption](./docs/figure-1.png)
 
