@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use clap::{Parser, Subcommand};
+use clap::{ArgGroup, Parser, Subcommand};
 
 #[derive(Parser, Debug)]
 #[command(version, about)]
@@ -39,6 +39,14 @@ pub enum Command {
         /// Path of the backup archive whose metadata will be shown.
         backup_dir: PathBuf,
     },
+    #[command(
+        group(
+            ArgGroup::new("extract_target")
+                .required(true)
+                .multiple(false)
+                .args(&["domain", "all"])
+        )
+    )]
     Extract {
         /// Path of the backup archive.
         backup_dir: PathBuf,
@@ -47,8 +55,12 @@ pub enum Command {
         out_dir: PathBuf,
 
         /// Domain of the files to extract.
-        #[arg(short, long, required = true)]
+        #[arg(short, long, group = "extract_target")]
         domain: Option<String>,
+
+        /// Extract every domain that contains exportable data.
+        #[arg(long, group = "extract_target")]
+        all: bool,
 
         /// Create symbolic links instead of copying files.
         #[arg(short = 'L', long)]

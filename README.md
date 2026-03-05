@@ -4,9 +4,9 @@ A simple tool for extracting files from iOS backup archive.
 
 iOS backup files are not stored with their original directory
 layouts. Retrieving a particular file from the app sandbox can be
-difficult. This tool can extract files from a backup archive, and then
-you can view the sandbox filesystem as it was originally stored in
-your iPhone or iPad.
+difficult. This tool can extract all the files from a backup archive,
+and then you can view the sandbox filesystem as it was originally
+stored in your iPhone or iPad.
 
 
 ## Install
@@ -27,9 +27,9 @@ cargo build --release
 
 ## Usage
 
-First, locate the backup archive you want to extract. Usually, it can
+First, locate the backup archive you want to extract. Usually, they can
 be found in 
-`/Users/<username>/Library/Application Support/MobileSync/Backup`.
+`/Users/<username>/Library/Application Support/MobileSync/Backup`
 
 **The archive is a directory that contains a `Manifest.db` file.**
 
@@ -62,27 +62,31 @@ by the amount of exportable data in each:
 ibackupextractor list-domains /path/to/your_backup_archive
 ```
 
-### Extract a Specified Domain
+### Extracting Files
 
-To extract files, use the `extract` subcommand followed by `-d` and
-the name of the domain to extract, then the path to the archive
-directory, and then a destination directory:
+To extract files, use the `extract` subcommand, followed by either
+`-d` to select a particular domain or `--all` to extract every domain
+with data, then the path to the archive directory, and a destination
+directory to write the extracted data to.
+
+For example, to extract all files from an archive, run:
+
+```
+ibackupextractor extract --all /path/to/your_backup_archive /path/to/dest_dir
+```
+
+Or to only export files from 'SomeDomain', run:
 
 ```
 ibackupextractor extract -d SomeDomain /path/to/your_backup_archive /path/to/dest_dir
 ```
 
-An empty destination directory is recommended.
+An empty destination directory is recommended. An error will result if
+the tool attempts to write over an existing file.
 
-By default, `extract` _copies_ each file to the destination
-directory. To save disk space, use the `-L` (or `--link`) option to
-create symbolic links instead of copies.
-
-For example, to copy all Camera Roll files from an archive:
-
-```
-ibackupextractor extract -d CameraRollDomain /path/to/your_backup_archive /path/to/dest_dir
-```
+By default, `extract` _copies_ each file to the destination directory.
+To save disk space, use the `-L` (or `--link`) option to create symbolic
+links instead of copies.
 
 ### Migrate a Domain Between Backups
 

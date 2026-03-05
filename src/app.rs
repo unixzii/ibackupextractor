@@ -4,7 +4,7 @@ use crate::Backup;
 use crate::cli::{Args, Command};
 use crate::db::BackupManifest;
 use crate::info::print_backup_info;
-use crate::utils::{format_bytes, PerfTimer};
+use crate::utils::{PerfTimer, format_bytes};
 use std::cmp::Reverse;
 
 mod progress_bar {
@@ -139,7 +139,11 @@ pub fn run(args: Args) -> Result<()> {
                 .unwrap_or(0);
 
             for (size_text, domain_name) in formatted_domains {
-                println!("{size_text:>width$} {}", domain_name, width = size_column_width);
+                println!(
+                    "{size_text:>width$} {}",
+                    domain_name,
+                    width = size_column_width
+                );
             }
         }
         Command::Migrate {
@@ -172,19 +176,33 @@ pub fn run(args: Args) -> Result<()> {
             timer.finish();
         }
         Command::Extract {
-            out_dir, domain, ..
+            out_dir,
+            domain,
+            all,
+            ..
         } => {
             let timer = PerfTimer::new();
             let pb_port = progress_bar::make();
-            src_backup
-                .extract_file(
-                    domain.as_ref().expect("domain should not be empty"),
-                    &out_dir,
-                    |event| {
+
+            let targets = if *all {
+                src_backup
+                    .domain_summaries()
+                    .context("failed to list domains")?
+                    .into_iter()
+                    .filter(|summary| summary.exportable_size > 0)
+                    .map(|summary| summary.domain)
+                    .collect::<Vec<_>>()
+            } else {
+                vec![domain.as_ref().expect("domain should not be empty").clone()]
+            };
+
+            for target in targets {
+                src_backup
+                    .extract_file(&target, &out_dir, |event| {
                         pb_port.send(event);
-                    },
-                )
-                .context("failed to extract files")?;
+                    })
+                    .with_context(|| format!("failed to extract domain {target}"))?;
+            }
 
             drop(pb_port);
 
