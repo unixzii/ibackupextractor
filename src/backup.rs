@@ -13,6 +13,11 @@ pub struct Backup {
     copy_mode: bool,
 }
 
+pub struct DomainSummary {
+    pub domain: String,
+    pub exportable_size: u64,
+}
+
 impl Backup {
     pub fn new<P: Into<PathBuf>>(backup_dir: P, manifest: BackupManifest, copy_mode: bool) -> Self {
         Self {
@@ -22,8 +27,39 @@ impl Backup {
         }
     }
 
-    pub fn list_domains(&self) -> Result<Vec<String>> {
-        self.manifest.query_domains()
+    pub fn domain_summaries(&self) -> Result<Vec<DomainSummary>> {
+        let domains = self.manifest.query_domains()?;
+        let mut summaries = Vec::with_capacity(domains.len());
+
+        for domain in domains {
+            let files = self
+                .manifest
+                .query_files(&domain)
+                .with_context(|| format!("failed to query files for domain {domain}"))?;
+
+            let mut exportable_size = 0_u64;
+            for file in files {
+                if file.file_type != ManifestFileType::File {
+                    continue;
+                }
+                let file_path = self.original_file_path(&file.file_id);
+                let metadata = fs::metadata(&file_path).with_context(|| {
+                    format!(
+                        "failed to read metadata for file {} in domain {}",
+                        file_path.display(),
+                        domain
+                    )
+                })?;
+                exportable_size += metadata.len();
+            }
+
+            summaries.push(DomainSummary {
+                domain,
+                exportable_size,
+            });
+        }
+
+        Ok(summaries)
     }
 
     pub fn extract_file<F>(&self, domain: &str, dest_dir: &Path, progress_cb: F) -> Result<()>

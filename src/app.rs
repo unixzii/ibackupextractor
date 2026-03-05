@@ -4,7 +4,8 @@ use crate::Backup;
 use crate::cli::{Args, Command};
 use crate::db::BackupManifest;
 use crate::info::print_backup_info;
-use crate::utils;
+use crate::utils::{format_bytes, PerfTimer};
+use std::cmp::Reverse;
 
 mod progress_bar {
     use std::sync::mpsc::{Receiver, Sender, channel};
@@ -116,14 +117,29 @@ pub fn run(args: Args) -> Result<()> {
 
     match &args.command {
         Command::ListDomains { .. } => {
-            let timer = utils::PerfTimer::new();
-            let domains = src_backup
-                .list_domains()
+            let timer = PerfTimer::new();
+            let mut domains = src_backup
+                .domain_summaries()
                 .context("failed to list domains")?;
+            domains.sort_by_key(|domain| Reverse(domain.exportable_size));
             timer.finish();
 
-            for domain in domains {
-                println!("{domain}");
+            let formatted_domains: Vec<_> = domains
+                .into_iter()
+                .map(|domain| {
+                    let size_text = format_bytes(domain.exportable_size);
+                    (size_text, domain.domain)
+                })
+                .collect();
+
+            let size_column_width = formatted_domains
+                .iter()
+                .map(|(size, _)| size.len())
+                .max()
+                .unwrap_or(0);
+
+            for (size_text, domain_name) in formatted_domains {
+                println!("{size_text:>width$} {}", domain_name, width = size_column_width);
             }
         }
         Command::Migrate {
@@ -131,7 +147,7 @@ pub fn run(args: Args) -> Result<()> {
             domain,
             ..
         } => {
-            let timer = utils::PerfTimer::new();
+            let timer = PerfTimer::new();
             let pb_port = progress_bar::make();
 
             let manifest_path = dest_backup_dir.join("Manifest.db");
@@ -158,7 +174,7 @@ pub fn run(args: Args) -> Result<()> {
         Command::Extract {
             out_dir, domain, ..
         } => {
-            let timer = utils::PerfTimer::new();
+            let timer = PerfTimer::new();
             let pb_port = progress_bar::make();
             src_backup
                 .extract_file(

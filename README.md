@@ -58,7 +58,8 @@ inside the archive.
 ### List Domains
 
 Backup files are grouped by "domains", and the `list-domains`
-subcommand will show all of those included in a particular archive:
+subcommand will show all the domains in a particular archive,
+sorted by the size of exportable data in each:
 
 ```
 ibackupextractor list-domains /path/to/your_backup_archive
