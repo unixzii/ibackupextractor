@@ -95,6 +95,20 @@ impl BackupManifest {
         Ok(rows.map(|r| r.get(0)).collect()?)
     }
 
+    pub fn file_count(&self) -> Result<usize> {
+        let mut stmt = self.db_conn.prepare("SELECT COUNT(*) FROM files")?;
+        let count: i64 = stmt.query_row([], |r| r.get(0))?;
+        Ok(count as usize)
+    }
+
+    pub fn domain_count(&self) -> Result<usize> {
+        let mut stmt = self
+            .db_conn
+            .prepare("SELECT COUNT(DISTINCT domain) FROM files")?;
+        let count: i64 = stmt.query_row([], |r| r.get(0))?;
+        Ok(count as usize)
+    }
+
     pub fn query_files(&self, domain: &str) -> Result<Vec<ManifestFile>> {
         let mut stmt = self
             .db_conn

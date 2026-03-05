@@ -26,6 +26,16 @@ Locate the backup archive you want to extract. Generally, you can find it under 
 
 The tool opens `Manifest.db` in read-only mode, so it can list domains and extract files even when the archive is mounted from read-only media such as external HFS+ disks.
 
+### Show Backup Information
+
+Use the `info` subcommand to get a summary of the entire archive, including the manifest location, timestamps, device and iTunes metadata, total files/domains, and the overall size on disk:
+
+```
+ibackupextractor info /path/to/your_backup_archive
+```
+
+`info` covers archive-level metadata while `list-domains` still focuses on the domains inside the archive, so the outputs remain complementary.
+
 ### List Domains
 
 Backup files are grouped by domains, and you can ask the binary to enumerate them with the `list-domains` subcommand. It only requires the path to the backup archive:

@@ -6,6 +6,7 @@ mod backup;
 mod cli;
 mod db;
 mod fs_index;
+mod info;
 mod utils;
 
 use backup::Backup;

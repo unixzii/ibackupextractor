@@ -15,6 +15,7 @@ impl Args {
             Command::ListDomains { backup_dir } => backup_dir,
             Command::Extract { backup_dir, .. } => backup_dir,
             Command::Migrate { backup_dir, .. } => backup_dir,
+            Command::Info { backup_dir } => backup_dir,
         }
     }
 
@@ -32,6 +33,10 @@ pub enum Command {
     #[command()]
     ListDomains {
         /// Path of the backup archive.
+        backup_dir: PathBuf,
+    },
+    Info {
+        /// Path of the backup archive whose metadata will be shown.
         backup_dir: PathBuf,
     },
     Extract {

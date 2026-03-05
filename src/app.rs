@@ -1,12 +1,13 @@
 use anyhow::{Context, Result};
 
+use crate::Backup;
 use crate::cli::{Args, Command};
 use crate::db::BackupManifest;
+use crate::info::print_backup_info;
 use crate::utils;
-use crate::Backup;
 
 mod progress_bar {
-    use std::sync::mpsc::{channel, Receiver, Sender};
+    use std::sync::mpsc::{Receiver, Sender, channel};
     use std::thread::{Builder as ThreadBuilder, JoinHandle};
     use std::time::Duration;
 
@@ -103,8 +104,13 @@ pub fn run(args: Args) -> Result<()> {
     let backup_dir = args.backup_dir();
 
     let manifest_path = backup_dir.join("Manifest.db");
-    let manifest = BackupManifest::open_read_only(manifest_path)
+    let manifest = BackupManifest::open_read_only(manifest_path.clone())
         .context("failed to open the manifest database")?;
+
+    if matches!(&args.command, Command::Info { .. }) {
+        print_backup_info(backup_dir, &manifest_path, &manifest)?;
+        return Ok(());
+    }
 
     let src_backup = Backup::new(backup_dir, manifest, args.copy_mode());
 
@@ -168,6 +174,7 @@ pub fn run(args: Args) -> Result<()> {
 
             timer.finish();
         }
+        Command::Info { .. } => unreachable!("info command handled before src backup creation"),
     }
 
     Ok(())

@@ -1,4 +1,4 @@
-use std::collections::{hash_map, HashMap};
+use std::collections::{HashMap, hash_map};
 use std::path::{Component as PathComponent, Path};
 use std::result::Result as StdResult;
 
