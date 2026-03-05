@@ -103,8 +103,8 @@ pub fn run(args: Args) -> Result<()> {
     let backup_dir = args.backup_dir();
 
     let manifest_path = backup_dir.join("Manifest.db");
-    let manifest =
-        BackupManifest::open(manifest_path).context("failed to open the manifest database")?;
+    let manifest = BackupManifest::open_read_only(manifest_path)
+        .context("failed to open the manifest database")?;
 
     let src_backup = Backup::new(backup_dir, manifest, args.copy_mode());
 
