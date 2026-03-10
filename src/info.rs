@@ -82,7 +82,7 @@ pub fn print_backup_info(
 
     println!("Backup information:");
     for (label, value) in rows {
-        println!("{label:24} {}", value);
+        println!("{label:24} {value}");
     }
 
     Ok(())

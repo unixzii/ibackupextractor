@@ -139,11 +139,7 @@ pub fn run(args: Args) -> Result<()> {
                 .unwrap_or(0);
 
             for (size_text, domain_name) in formatted_domains {
-                println!(
-                    "{size_text:>width$} {}",
-                    domain_name,
-                    width = size_column_width
-                );
+                println!("{size_text:>size_column_width$} {domain_name}");
             }
         }
         Command::Migrate {
@@ -198,7 +194,7 @@ pub fn run(args: Args) -> Result<()> {
 
             for target in targets {
                 src_backup
-                    .extract_file(&target, &out_dir, |event| {
+                    .extract_file(&target, out_dir, |event| {
                         pb_port.send(event);
                     })
                     .with_context(|| format!("failed to extract domain {target}"))?;

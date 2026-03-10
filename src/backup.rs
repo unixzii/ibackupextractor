@@ -162,7 +162,7 @@ impl Backup {
             let dest_file_path = self.original_file_path(file_id);
             let dir = dest_file_path.parent().expect("path should have a parent");
             if !dir.exists() {
-                fs::create_dir_all(&dir).with_context(|| {
+                fs::create_dir_all(dir).with_context(|| {
                     format!("failed to create directory: {}", dir.to_string_lossy())
                 })?;
             }
