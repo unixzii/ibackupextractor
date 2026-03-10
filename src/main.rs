@@ -1,5 +1,3 @@
-#![feature(assert_matches)]
-
 #[macro_use]
 extern crate anyhow;
 
@@ -8,6 +6,7 @@ mod backup;
 mod cli;
 mod db;
 mod fs_index;
+mod info;
 mod utils;
 
 use backup::Backup;

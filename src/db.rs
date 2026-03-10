@@ -3,26 +3,14 @@ use std::path::Path;
 
 use anyhow::{Error as AnyhowError, Result};
 use fallible_iterator::FallibleIterator;
-use rusqlite::Connection as SqliteConnection;
+use rusqlite::{Connection as SqliteConnection, OpenFlags};
 
 pub struct BackupManifest {
     db_conn: SqliteConnection,
 }
 
 impl BackupManifest {
-    pub fn open<P>(path: P) -> Result<Self>
-    where
-        P: AsRef<Path>,
-    {
-        if !path.as_ref().exists() {
-            return Err(anyhow!(
-                "file not exists: {}",
-                path.as_ref().to_string_lossy()
-            ));
-        }
-
-        let db_conn = SqliteConnection::open(path)?;
-
+    fn open_with_connection(db_conn: SqliteConnection) -> Result<Self> {
         // Verify the table schema.
         let mut stmt = db_conn.prepare("PRAGMA table_info('files')")?;
         let rows = stmt.query([])?;
@@ -63,12 +51,62 @@ impl BackupManifest {
         Ok(Self { db_conn })
     }
 
+    pub fn open<P>(path: P) -> Result<Self>
+    where
+        P: AsRef<Path>,
+    {
+        if !path.as_ref().exists() {
+            return Err(anyhow!(
+                "file not exists: {}",
+                path.as_ref().to_string_lossy()
+            ));
+        }
+
+        let db_conn = SqliteConnection::open(path)?;
+        Self::open_with_connection(db_conn)
+    }
+
+    pub fn open_read_only<P>(path: P) -> Result<Self>
+    where
+        P: AsRef<Path>,
+    {
+        if !path.as_ref().exists() {
+            return Err(anyhow!(
+                "file not exists: {}",
+                path.as_ref().to_string_lossy()
+            ));
+        }
+
+        let path_ref = path.as_ref();
+        let uri = format!("file:{}?mode=ro&immutable=1", path_ref.display());
+        let db_conn = SqliteConnection::open_with_flags(
+            uri,
+            OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_URI,
+        )?;
+
+        Self::open_with_connection(db_conn)
+    }
+
     pub fn query_domains(&self) -> Result<Vec<String>> {
         let mut stmt = self
             .db_conn
             .prepare("SELECT domain FROM files GROUP BY domain")?;
         let rows = stmt.query([])?;
         Ok(rows.map(|r| r.get(0)).collect()?)
+    }
+
+    pub fn file_count(&self) -> Result<usize> {
+        let mut stmt = self.db_conn.prepare("SELECT COUNT(*) FROM files")?;
+        let count: i64 = stmt.query_row([], |r| r.get(0))?;
+        Ok(count as usize)
+    }
+
+    pub fn domain_count(&self) -> Result<usize> {
+        let mut stmt = self
+            .db_conn
+            .prepare("SELECT COUNT(DISTINCT domain) FROM files")?;
+        let count: i64 = stmt.query_row([], |r| r.get(0))?;
+        Ok(count as usize)
     }
 
     pub fn query_files(&self, domain: &str) -> Result<Vec<ManifestFile>> {

@@ -1,12 +1,14 @@
 use anyhow::{Context, Result};
 
+use crate::Backup;
 use crate::cli::{Args, Command};
 use crate::db::BackupManifest;
-use crate::utils;
-use crate::Backup;
+use crate::info::print_backup_info;
+use crate::utils::{PerfTimer, format_bytes};
+use std::cmp::Reverse;
 
 mod progress_bar {
-    use std::sync::mpsc::{channel, Receiver, Sender};
+    use std::sync::mpsc::{Receiver, Sender, channel};
     use std::thread::{Builder as ThreadBuilder, JoinHandle};
     use std::time::Duration;
 
@@ -103,21 +105,41 @@ pub fn run(args: Args) -> Result<()> {
     let backup_dir = args.backup_dir();
 
     let manifest_path = backup_dir.join("Manifest.db");
-    let manifest =
-        BackupManifest::open(manifest_path).context("failed to open the manifest database")?;
+    let manifest = BackupManifest::open_read_only(manifest_path.clone())
+        .context("failed to open the manifest database")?;
+
+    if matches!(&args.command, Command::Info { .. }) {
+        print_backup_info(backup_dir, &manifest_path, &manifest)?;
+        return Ok(());
+    }
 
     let src_backup = Backup::new(backup_dir, manifest, args.copy_mode());
 
     match &args.command {
         Command::ListDomains { .. } => {
-            let timer = utils::PerfTimer::new();
-            let domains = src_backup
-                .list_domains()
+            let timer = PerfTimer::new();
+            let mut domains = src_backup
+                .domain_summaries()
                 .context("failed to list domains")?;
+            domains.sort_by_key(|domain| Reverse(domain.exportable_size));
             timer.finish();
 
-            for domain in domains {
-                println!("{domain}");
+            let formatted_domains: Vec<_> = domains
+                .into_iter()
+                .map(|domain| {
+                    let size_text = format_bytes(domain.exportable_size);
+                    (size_text, domain.domain)
+                })
+                .collect();
+
+            let size_column_width = formatted_domains
+                .iter()
+                .map(|(size, _)| size.len())
+                .max()
+                .unwrap_or(0);
+
+            for (size_text, domain_name) in formatted_domains {
+                println!("{size_text:>size_column_width$} {domain_name}");
             }
         }
         Command::Migrate {
@@ -125,7 +147,7 @@ pub fn run(args: Args) -> Result<()> {
             domain,
             ..
         } => {
-            let timer = utils::PerfTimer::new();
+            let timer = PerfTimer::new();
             let pb_port = progress_bar::make();
 
             let manifest_path = dest_backup_dir.join("Manifest.db");
@@ -150,24 +172,39 @@ pub fn run(args: Args) -> Result<()> {
             timer.finish();
         }
         Command::Extract {
-            out_dir, domain, ..
+            out_dir,
+            domain,
+            all,
+            ..
         } => {
-            let timer = utils::PerfTimer::new();
+            let timer = PerfTimer::new();
             let pb_port = progress_bar::make();
-            src_backup
-                .extract_file(
-                    domain.as_ref().expect("domain should not be empty"),
-                    &out_dir,
-                    |event| {
+
+            let targets = if *all {
+                src_backup
+                    .domain_summaries()
+                    .context("failed to list domains")?
+                    .into_iter()
+                    .filter(|summary| summary.exportable_size > 0)
+                    .map(|summary| summary.domain)
+                    .collect::<Vec<_>>()
+            } else {
+                vec![domain.as_ref().expect("domain should not be empty").clone()]
+            };
+
+            for target in targets {
+                src_backup
+                    .extract_file(&target, out_dir, |event| {
                         pb_port.send(event);
-                    },
-                )
-                .context("failed to extract files")?;
+                    })
+                    .with_context(|| format!("failed to extract domain {target}"))?;
+            }
 
             drop(pb_port);
 
             timer.finish();
         }
+        Command::Info { .. } => unreachable!("info command handled before src backup creation"),
     }
 
     Ok(())
